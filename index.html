@@ -4,6 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>GIERKA — Budujemy Drugą Polskę</title>
+    <meta name="theme-color" content="#12061c">
+    <link rel="manifest" href="/manifest.webmanifest">
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png">
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="GIERKA">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <script src="https://cdn.tailwindcss.com/3.4.17"></script>
@@ -3063,6 +3071,46 @@
             }
         }
 
+        // Agitatorzy pojawiają się ZAWSZE przy atakowanym budynku (w poprawnych, nie zablokowanych miejscach)
+        function spawnAgitatorsAroundBuilding(building, count) {
+            const before = enemies.length;
+            spawnWaveEnemies(count);
+            const group = enemies.slice(before);
+            const bCx = building.x + building.w / 2;
+            const bCy = building.y + building.h / 2;
+            const baseRx = building.w / 2 + 44;
+            const baseRy = building.h / 2 + 44;
+            const startAng = Math.random() * Math.PI * 2;
+
+            group.forEach((ag, i) => {
+                const ang0 = startAng + (i / group.length) * Math.PI * 2;
+                let px = bCx + Math.cos(ang0) * baseRx;
+                let py = bCy + Math.sin(ang0) * baseRy;
+                let found = false;
+                for (let attempt = 0; attempt < 60 && !found; attempt++) {
+                    const ang = ang0 + (attempt % 2 === 0 ? 1 : -1) * Math.floor(attempt / 2) * 0.18;
+                    const scale = 1 + Math.floor(attempt / 12) * 0.35;
+                    const tx = Math.max(70, Math.min(WORLD_SIZE - 70, bCx + Math.cos(ang) * baseRx * scale));
+                    const ty = Math.max(70, Math.min(WORLD_SIZE - 70, bCy + Math.sin(ang) * baseRy * scale));
+                    px = tx;
+                    py = ty;
+                    if (!collidesWithBuilding(tx, ty, ag.radius + 2) && !isPointInSafeZone(tx, ty, ag.radius + 4)) {
+                        found = true;
+                    }
+                }
+                ag.x = px;
+                ag.y = py;
+                ag.aiRole = 'agitator';
+                ag.agitSlotIndex = i;
+                ag.agitGroupSize = group.length;
+                ag.agitSlotX = px;
+                ag.agitSlotY = py;
+                ag.stunTimer = 0;
+                ag.fleeTimer = 0;
+            });
+            return group;
+        }
+
         function isPointInSafeZone(x, y, margin = 0) {
             return Math.hypot(x - SAFE_ZONE.x, y - SAFE_ZONE.y) <= (SAFE_ZONE.radius + margin);
         }
@@ -4060,6 +4108,16 @@
                 activeAgitatedBuilding = null;
             }
 
+            // Wystraszeni / nawróceni agitatorzy przestają być agitatorami (żeby nie zostawały "duchy" agitacji)
+            enemies.forEach(e => {
+                if (e.aiRole === 'agitator' && (e.fleeTimer > 0 || e.converted || e.type === 'boss')) {
+                    e.aiRole = 'attacker';
+                }
+                if (e.aiRole === 'agitator' && !activeAgitatedBuilding) {
+                    e.aiRole = 'attacker';
+                }
+            });
+
             let currentAgitators = enemies.filter(
                 e => e.aiRole === 'agitator' && e.type !== 'boss' && e.fleeTimer <= 0 && !e.converted
             );
@@ -4077,24 +4135,10 @@
                     agitationCooldown = 12.0;
                 }
             } else if (!ussrMission.active && agitationCooldown <= 0 && agitableBuildings.length > 0) {
-                const candidateAttackers = enemies.filter(
-                    e => e.type !== 'boss' && e.fleeTimer <= 0 && !e.converted
-                );
-                if (candidateAttackers.length >= 3) {
-                    const chosenBuilding = agitableBuildings[Math.floor(Math.random() * agitableBuildings.length)];
-                    const bCx = chosenBuilding.x + chosenBuilding.w / 2;
-                    const bCy = chosenBuilding.y + chosenBuilding.h / 2;
-                    const desiredGroupSize = Math.min(MAX_AGITATORS, Math.max(3, candidateAttackers.length >= 6 ? 4 : 3));
-                    candidateAttackers.sort((a, b) => Math.hypot(a.x - bCx, a.y - bCy) - Math.hypot(b.x - bCx, b.y - bCy));
-                    const selected = candidateAttackers.slice(0, desiredGroupSize);
-                    selected.forEach((ag, i) => {
-                        ag.aiRole = 'agitator';
-                        ag.agitSlotIndex = i;
-                        ag.agitGroupSize = selected.length;
-                    });
-                    activeAgitatedBuilding = chosenBuilding;
-                    currentAgitators = selected;
-                }
+                const chosenBuilding = agitableBuildings[Math.floor(Math.random() * agitableBuildings.length)];
+                const desiredGroupSize = Math.min(MAX_AGITATORS, enemies.length >= 6 ? 4 : 3);
+                currentAgitators = spawnAgitatorsAroundBuilding(chosenBuilding, desiredGroupSize);
+                activeAgitatedBuilding = chosenBuilding;
             }
 
             let isAnyAgitatorPresent = false;
@@ -4152,8 +4196,12 @@
                     const rx = activeAgitatedBuilding.w / 2 + 44;
                     const ry = activeAgitatedBuilding.h / 2 + 44;
 
-                    const slotX = Math.max(70, Math.min(WORLD_SIZE - 70, bCenterX + Math.cos(baseAng) * rx));
-                    const slotY = Math.max(70, Math.min(WORLD_SIZE - 70, bCenterY + Math.sin(baseAng) * ry));
+                    let slotX = Math.max(70, Math.min(WORLD_SIZE - 70, bCenterX + Math.cos(baseAng) * rx));
+                    let slotY = Math.max(70, Math.min(WORLD_SIZE - 70, bCenterY + Math.sin(baseAng) * ry));
+                    if ((collidesWithBuilding(slotX, slotY, e.radius) || isPointInSafeZone(slotX, slotY, e.radius)) && e.agitSlotX !== undefined) {
+                        slotX = e.agitSlotX;
+                        slotY = e.agitSlotY;
+                    }
 
                     const distToSlot = Math.hypot(slotX - e.x, slotY - e.y);
                     const distToBuilding = Math.hypot(bCenterX - e.x, bCenterY - e.y);
@@ -4223,7 +4271,7 @@
                 }
             });
 
-            if (!isAnyAgitatorPresent && currentAgitators.length === 0 && activeAgitatedBuilding) {
+            if (activeAgitatedBuilding && !enemies.some(e => e.aiRole === 'agitator' && e.type !== 'boss' && e.fleeTimer <= 0 && !e.converted)) {
                 activeAgitatedBuilding = null;
                 agitationCooldown = 10.0;
             }
@@ -5183,6 +5231,13 @@
 
         initC64BootScreen();
         updateMenuSaveControls();
+    </script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').catch(() => {});
+            });
+        }
     </script>
 </body>
 </html>
