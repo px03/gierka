@@ -1,5 +1,5 @@
 /* GIERKA — service worker (PWA). Zmień VERSION przy każdym wdrożeniu, żeby wymusić odświeżenie cache. */
-const VERSION = 'gierka-v1';
+const VERSION = 'gierka-v2';
 const CORE_CACHE = VERSION + '-core';
 const RUNTIME_CACHE = VERSION + '-runtime';
 
