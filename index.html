@@ -1233,7 +1233,7 @@
                 <div class="flex items-center justify-between border-b border-white/15 pb-2.5 mb-3">
                     <div>
                         <h3 class="font-black text-base sm:text-lg text-[#ffd166] uppercase tracking-wide">🏗️ INWESTYCJE DRUGIEJ POLSKI</h3>
-                        <p class="text-[11px] text-pink-200">Buduj nowe obiekty na mapie — każda inwestycja podnosi poparcie!</p>
+                        <p class="text-[11px] text-pink-200">5 poziomów po 5 obiektów — im wyżej, tym drożej, ale każda inwestycja podnosi poparcie!</p>
                     </div>
                     <button onclick="toggleInvestmentsModal()" class="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-black cursor-pointer">✕</button>
                 </div>
@@ -2298,7 +2298,27 @@
             'FABRYKA FSM 126p': 'ZAKŁADY ŁADA ŻIGULI',
             'NOWA HUTA KATOWICE': 'HUTA URALMASZ (ZSRR)',
             'DWORZEC CENTRALNY': 'DWORZEC KAZANSKI (MOSKWA)',
-            'PORT PÓŁNOCNY GDAŃSK': 'PORT LENINGRAD & RAFINERIA'
+            'PORT PÓŁNOCNY GDAŃSK': 'PORT LENINGRAD & RAFINERIA',
+            'GIERKÓWKA KAT–WAW': 'MAGISTRALA BAJKAŁSKO-AMURSKA',
+            'ELEKTROWNIA BEŁCHATÓW': 'ELEKTROWNIA SAJANO-SZUSZENSKAJA',
+            'ZAKŁADY AZOTOWE PUŁAWY': 'KOMBINAT AZOTOWY NOWOMOSKOWSK',
+            'TERMINAL OKĘCIE (LOT)': 'LOTNISKO SZEREMETIEWO (AEROFŁOT)',
+            'OSIEDLE URSYNÓW': 'OSIEDLE MARINO (MOSKWA)',
+            'STOCZNIA GDAŃSKA': 'STOCZNIA ADMIRALICJI (LENINGRAD)',
+            'KOPALNIA JASTRZĘBIE': 'KOPALNIA WORKUTA',
+            'DOM TELEWIZJI (KOLOR)': 'WIEŻA TELEWIZYJNA OSTANKINO',
+            'FABRYKA URSUS C-330': 'TRAKTORY BIAŁORUŚ (MIŃSK)',
+            'HOTEL FORUM WARSZAWA': 'HOTEL ROSSIJA (MOSKWA)',
+            'DOM TOWAROWY CENTRUM': 'GUM — DOM TOWAROWY (PLAC CZERWONY)',
+            'FABRYKA RADIOWA DIORA': 'ZAKŁADY RADIOWE WEF (RYGA)',
+            'STADION ŚLĄSKI': 'STADION ŁUŻNIKI (MOSKWA)',
+            'RAFINERIA PŁOCK': 'RAFINERIA OMSK',
+            'SPODEK KATOWICE': 'PAŁAC SPORTU LUŻNIKI',
+            'LOTY KOSMICZNE 1978': 'BAJKONUR (INTERKOSMOS)',
+            'SALA KONGRESOWA PZPR': 'KREMLOWSKI PAŁAC ZJAZDÓW',
+            'STOCZNIA SZCZECIŃSKA': 'STOCZNIA NIKOŁAJEW',
+            'REAKTOR ŚWIERK': 'REAKTOR OBNIŃSK',
+            'POMNIK WIELKIEJ PŁYTY': 'POMNIK PODBOJU KOSMOSU'
         };
 
         const unlockableProjects = [
@@ -2344,6 +2364,92 @@
             }
         ];
 
+        /* ===================================================================== */
+        /* POZIOMY INWESTYCJI: 5 poziomów po 5 budynków                           */
+        /* Poziom 1 = dotychczasowe inwestycje. Kolejny poziom odblokowuje się    */
+        /* po wybudowaniu wszystkich 5 obiektów poprzedniego poziomu.             */
+        /* ===================================================================== */
+        const PROJECT_LEVELS = [
+            { level: 1, title: 'Poziom 1 — Pierwsze Inwestycje (1971)' },
+            { level: 2, title: 'Poziom 2 — Dekada Gierka' },
+            { level: 3, title: 'Poziom 3 — Polska Rośnie w Siłę' },
+            { level: 4, title: 'Poziom 4 — Kredyty i Wielkie Budowy' },
+            { level: 5, title: 'Poziom 5 — Szczyt Drugiej Polski' }
+        ];
+        unlockableProjects.forEach(p => { p.level = 1; });
+
+        (function addExtraInvestmentLevels() {
+            // [poziom, id, nazwa w menu, koszt, efekt, opis efektu, x, y, w, h, kolor, dach, akcent, nazwa na mapie]
+            const defs = [
+                // POZIOM 2
+                [2, 'gierkowka', 'Gierkówka (Katowice–Warszawa)', 2100, { type: 'ammo', value: 10 }, '+10 amunicji do każdej broni', 520, 70, 250, 200, '#7c2d12', '#c2410c', '#fde047', 'GIERKÓWKA KAT–WAW'],
+                [2, 'elektrownia_belchatow', 'Elektrownia Bełchatów', 2500, { type: 'debt', value: 2 }, '-2 mld $ długu', 1030, 70, 240, 200, '#3f3f46', '#52525b', '#f97316', 'ELEKTROWNIA BEŁCHATÓW'],
+                [2, 'azoty_pulawy', 'Zakłady Azotowe Puławy', 2900, { type: 'points', value: 400 }, '+400 PKT dotacji eksportowej', 1530, 70, 240, 200, '#14532d', '#15803d', '#bef264', 'ZAKŁADY AZOTOWE PUŁAWY'],
+                [2, 'okecie_lot', 'Terminal Okęcie (LOT)', 3300, { type: 'car', value: 1 }, '+1 użycie Malucha', 1990, 70, 240, 200, '#0c4a6e', '#0369a1', '#e0f2fe', 'TERMINAL OKĘCIE (LOT)'],
+                [2, 'ursynow', 'Osiedle Ursynów', 3800, { type: 'milicja', value: 1 }, '+1 wezwanie Milicji', 70, 520, 220, 200, '#475569', '#64748b', '#fca5a5', 'OSIEDLE URSYNÓW'],
+                // POZIOM 3
+                [3, 'stocznia_gdanska', 'Stocznia Gdańska', 4400, { type: 'ammo', value: 15 }, '+15 amunicji do każdej broni', 70, 1030, 220, 220, '#1e3a5f', '#2563eb', '#fbbf24', 'STOCZNIA GDAŃSKA'],
+                [3, 'kopalnia_jastrzebie', 'Kopalnia Jastrzębie', 5000, { type: 'points', value: 700 }, '+700 PKT z wydobycia węgla', 70, 1530, 220, 220, '#1c1917', '#44403c', '#facc15', 'KOPALNIA JASTRZĘBIE'],
+                [3, 'dom_telewizji', 'Dom Telewizji (Kolor)', 5600, { type: 'hold', value: 15 }, '+15s ochrony 100% poparcia (sukces propagandy)', 70, 1990, 220, 220, '#581c87', '#7e22ce', '#f0abfc', 'DOM TELEWIZJI (KOLOR)'],
+                [3, 'ursus_c330', 'Fabryka Ursus C-330', 6300, { type: 'debt', value: 3 }, '-3 mld $ długu (eksport traktorów)', 2415, 520, 170, 200, '#7f1d1d', '#dc2626', '#fef08a', 'FABRYKA URSUS C-330'],
+                [3, 'hotel_forum', 'Hotel Forum Warszawa', 7000, { type: 'car', value: 2 }, '+2 użycia Malucha', 2415, 1030, 170, 220, '#134e4a', '#0f766e', '#99f6e4', 'HOTEL FORUM WARSZAWA'],
+                // POZIOM 4
+                [4, 'dom_towarowy', 'Dom Towarowy Centrum', 8000, { type: 'points', value: 1200 }, '+1200 PKT z kolejek w Pewexie', 2415, 1530, 170, 220, '#9d174d', '#db2777', '#fbcfe8', 'DOM TOWAROWY CENTRUM'],
+                [4, 'diora', 'Fabryka Radiowa Diora', 9000, { type: 'milicja', value: 2 }, '+2 wezwania Milicji', 2415, 1990, 170, 210, '#92400e', '#d97706', '#fef3c7', 'FABRYKA RADIOWA DIORA'],
+                [4, 'stadion_slaski', 'Stadion Śląski', 10000, { type: 'hold', value: 25 }, '+25s ochrony 100% poparcia (Kocioł Czarownic)', 520, 2415, 250, 170, '#166534', '#16a34a', '#ffffff', 'STADION ŚLĄSKI'],
+                [4, 'rafineria_plock', 'Rafineria Płock', 11000, { type: 'ammo', value: 20 }, '+20 amunicji do każdej broni', 1030, 2415, 250, 170, '#27272a', '#52525b', '#fb923c', 'RAFINERIA PŁOCK'],
+                [4, 'spodek', 'Spodek Katowice', 12500, { type: 'debt', value: 5 }, '-5 mld $ długu (koncerty i targi)', 1530, 2415, 250, 170, '#312e81', '#4f46e5', '#c7d2fe', 'SPODEK KATOWICE'],
+                // POZIOM 5
+                [5, 'kosmos_1978', 'Loty Kosmiczne 1978', 14000, { type: 'points', value: 2500 }, '+2500 PKT (pierwszy Polak w kosmosie)', 1990, 2415, 240, 170, '#0f172a', '#1e3a8a', '#38bdf8', 'LOTY KOSMICZNE 1978'],
+                [5, 'sala_kongresowa', 'Sala Kongresowa PZPR', 16000, { type: 'car', value: 3 }, '+3 użycia Malucha', 2415, 70, 170, 200, '#450a0a', '#991b1b', '#fde047', 'SALA KONGRESOWA PZPR'],
+                [5, 'stocznia_szczecin', 'Stocznia Szczecińska', 18000, { type: 'ammo', value: 30 }, '+30 amunicji do każdej broni', 1030, 1530, 250, 220, '#083344', '#0e7490', '#67e8f9', 'STOCZNIA SZCZECIŃSKA'],
+                [5, 'reaktor_swierk', 'Reaktor Świerk', 20000, { type: 'debt', value: 8 }, '-8 mld $ długu (atom dla narodu)', 1990, 1990, 250, 210, '#365314', '#4d7c0f', '#d9f99d', 'REAKTOR ŚWIERK'],
+                [5, 'pomnik_plyty', 'Pomnik Wielkiej Płyty', 25000, { type: 'hold', value: 60 }, '+60s ochrony 100% poparcia (szczyt Drugiej Polski)', 70, 70, 220, 220, '#713f12', '#ca8a04', '#fffbeb', 'POMNIK WIELKIEJ PŁYTY']
+            ];
+            defs.forEach(d => {
+                const [level, id, name, cost, effect, effectDesc, x, y, w, h, color, roof, accent, mapName] = d;
+                unlockableProjects.push({
+                    id, level, name, cost, effect,
+                    bonusDesc: `+15% poparcia (lub +12s ochrony 100%) i ${effectDesc}`,
+                    unlocked: false,
+                    building: { x, y, w, h, namePrl: mapName, name: mapName, color, roof, accent }
+                });
+            });
+        })();
+
+        function isProjectLevelOpen(level) {
+            if (level <= 1) return true;
+            return unlockableProjects.filter(p => p.level === level - 1).every(p => p.unlocked);
+        }
+
+        function applyProjectEffect(proj) {
+            const e = proj.effect;
+            if (!e) return;
+            switch (e.type) {
+                case 'ammo':
+                    WEAPON_CONFIG.forEach((cfg, idx) => {
+                        player.ammo[idx] = Math.min(cfg.maxAmmo, player.ammo[idx] + e.value);
+                    });
+                    break;
+                case 'debt':
+                    player.debt = Math.max(0, +(player.debt - e.value).toFixed(1));
+                    break;
+                case 'points':
+                    player.score += e.value;
+                    checkScoreAmmoRefill();
+                    break;
+                case 'car':
+                    player.carUses = Math.min(MAX_CAR_USES, player.carUses + e.value);
+                    break;
+                case 'milicja':
+                    player.milicjaCharges = Math.min(MAX_MILICJA_CHARGES, player.milicjaCharges + e.value);
+                    break;
+                case 'hold':
+                    player.fullSupportHoldTimer = Math.min(90, player.fullSupportHoldTimer + e.value);
+                    break;
+            }
+        }
+
         const missions = [
             {
                 id: 'stonka',
@@ -2366,7 +2472,7 @@
             {
                 id: 'budowa',
                 title: 'Osiedle z Wielkiej Płyty',
-                desc: 'Użyj Kielni na 3 Placach Budowy',
+                desc: 'Użyj Kielni na Placach Budowy',
                 targetType: 'build',
                 current: 0,
                 goal: 3,
@@ -2710,6 +2816,7 @@
                     if (constructionSites[idx]) constructionSites[idx].built = !!cs.built;
                 });
             }
+            normalizeConstructionSites();
 
             if (Array.isArray(st.vehicles)) {
                 vehicles = st.vehicles.map(v => ({ ...v, hitCooldown: 0 }));
@@ -2973,6 +3080,7 @@
                         if (constructionSites[idx]) constructionSites[idx].built = !!cs.built;
                     });
                 }
+                normalizeConstructionSites();
 
                 nextAmmoRefillScore = Math.max(AMMO_REFILL_STEP, (Math.floor(player.score / AMMO_REFILL_STEP) + 1) * AMMO_REFILL_STEP);
             }
@@ -3175,33 +3283,57 @@
         function renderInvestmentsList() {
             const list = document.getElementById('investments-list');
             list.innerHTML = '';
-            unlockableProjects.forEach(proj => {
-                const canAfford = player.score >= proj.cost && !proj.unlocked;
-                const card = document.createElement('div');
-                card.className = `p-2.5 rounded-xl border ${proj.unlocked ? 'border-emerald-400/60 bg-emerald-950/40' : 'border-white/15 bg-white/5'} flex items-center justify-between gap-2`;
-                card.innerHTML = `
-                    <div>
-                        <div class="font-black text-white text-xs sm:text-sm">${proj.unlocked ? '✅' : '🏗️'} ${proj.name}</div>
-                        <div class="text-[11px] text-amber-200/90">${proj.bonusDesc}</div>
-                    </div>
-                    <button ${proj.unlocked || !canAfford ? 'disabled' : ''}
-                            onclick="unlockProject('${proj.id}')"
-                            class="px-3 py-1.5 rounded-lg font-black text-[11px] uppercase shrink-0 transition cursor-pointer
-                                   ${proj.unlocked
-                                     ? 'bg-emerald-600/40 text-emerald-200 cursor-default'
-                                     : canAfford
-                                       ? 'bg-gradient-to-r from-pink-600 to-amber-500 text-white shadow-lg hover:brightness-110'
-                                       : 'bg-gray-800 text-gray-400 opacity-60 cursor-not-allowed'}">
-                        ${proj.unlocked ? 'WYBUDOWANO' : `${proj.cost} PKT`}
-                    </button>
+
+            PROJECT_LEVELS.forEach(lv => {
+                const projs = unlockableProjects.filter(p => p.level === lv.level);
+                if (!projs.length) return;
+                const open = isProjectLevelOpen(lv.level);
+                const doneCount = projs.filter(p => p.unlocked).length;
+
+                const header = document.createElement('div');
+                header.className = `pt-2 pb-1 flex items-center justify-between gap-2 ${open ? 'text-amber-300' : 'text-gray-500'}`;
+                header.innerHTML = `
+                    <span class="font-black uppercase tracking-wide text-[11px] sm:text-xs">${open ? '🏗️' : '🔒'} ${lv.title}</span>
+                    <span class="font-black text-[11px]">${doneCount}/${projs.length}</span>
                 `;
-                list.appendChild(card);
+                list.appendChild(header);
+
+                if (!open) {
+                    const note = document.createElement('div');
+                    note.className = 'p-2 rounded-lg border border-white/10 bg-white/5 text-[11px] text-gray-400 text-center';
+                    note.textContent = `Wybuduj wszystkie 5 obiektów z poziomu ${lv.level - 1}, aby odblokować ten poziom.`;
+                    list.appendChild(note);
+                }
+
+                projs.forEach(proj => {
+                    const canAfford = open && player.score >= proj.cost && !proj.unlocked;
+                    const card = document.createElement('div');
+                    card.className = `p-2.5 rounded-xl border ${proj.unlocked ? 'border-emerald-400/60 bg-emerald-950/40' : 'border-white/15 bg-white/5'} flex items-center justify-between gap-2 ${open ? '' : 'opacity-50'}`;
+                    card.innerHTML = `
+                        <div>
+                            <div class="font-black text-white text-xs sm:text-sm">${proj.unlocked ? '✅' : (open ? '🏗️' : '🔒')} ${proj.name}</div>
+                            <div class="text-[11px] text-amber-200/90">${proj.bonusDesc}</div>
+                        </div>
+                        <button ${proj.unlocked || !canAfford ? 'disabled' : ''}
+                                onclick="unlockProject('${proj.id}')"
+                                class="px-3 py-1.5 rounded-lg font-black text-[11px] uppercase shrink-0 transition cursor-pointer
+                                       ${proj.unlocked
+                                         ? 'bg-emerald-600/40 text-emerald-200 cursor-default'
+                                         : canAfford
+                                           ? 'bg-gradient-to-r from-pink-600 to-amber-500 text-white shadow-lg hover:brightness-110'
+                                           : 'bg-gray-800 text-gray-400 opacity-60 cursor-not-allowed'}">
+                            ${proj.unlocked ? 'WYBUDOWANO' : `${proj.cost} PKT`}
+                        </button>
+                    `;
+                    list.appendChild(card);
+                });
             });
         }
 
         function unlockProject(id) {
             const proj = unlockableProjects.find(p => p.id === id);
             if (!proj || proj.unlocked || player.score < proj.cost) return;
+            if (!isProjectLevelOpen(proj.level || 1)) return;
 
             registerPlayerAction();
             player.score -= proj.cost;
@@ -3215,6 +3347,7 @@
 
             const wasFull = player.health >= 99.9;
             boostSupport(15, 12);
+            applyProjectEffect(proj);
 
             if (proj.id === 'fsm_bielsko') {
                 spawnCitizenVehicle(1920, 740, '#ff2a85');
@@ -3307,6 +3440,7 @@
             missions.forEach((m, idx) => {
                 m.current = 0;
                 if (idx === 0 || idx === 1) m.goal = 5;
+                if (m.targetType === 'build') m.goal = 3;
             });
             unlockableProjects.forEach(p => p.unlocked = false);
 
@@ -3343,7 +3477,11 @@
             constructionSites = [
                 { x: 1460, y: 1790, r: 48, built: false, label: 'BLOK A' },
                 { x: 1810, y: 1460, r: 48, built: false, label: 'BLOK B' },
-                { x: 830, y: 1460, r: 48, built: false, label: 'WIADUKT' }
+                { x: 830, y: 1460, r: 48, built: false, label: 'WIADUKT' },
+                { x: 1160, y: 1460, r: 48, built: false, label: 'SZKOŁA' },
+                { x: 1900, y: 1790, r: 48, built: false, label: 'PRZEDSZKOLE' },
+                { x: 2300, y: 1330, r: 48, built: false, label: 'ZAJEZDNIA' },
+                { x: 1130, y: 1830, r: 48, built: false, label: 'OSIEDLE C' }
             ];
 
             applyRegionTheme(false);
@@ -3842,8 +3980,45 @@
             updateHUD();
         }
 
+        /* Place Budowy pojawiają się TYLKO podczas misji z Kielnią (w ZSRR – pierwsze 3 jak dawniej) */
+        const USSR_CONSTRUCTION_SITES = 3;
+
+        function isBuildMissionActive() {
+            const m = missions[currentMissionIndex];
+            return !ussrMission.active && !!m && m.targetType === 'build';
+        }
+
+        function isConstructionSiteActive(idx) {
+            if (ussrMission.active) return idx < USSR_CONSTRUCTION_SITES;
+            const m = missions[currentMissionIndex];
+            return isBuildMissionActive() && idx < m.goal;
+        }
+
+        function startBuildMission() {
+            constructionSites.forEach(s => { s.built = false; });
+            const bm = missions.find(m => m.targetType === 'build');
+            if (bm) bm.current = 0;
+            addFloatingText(player.x, player.y - 70, '🏗️ PLACE BUDOWY POJAWIŁY SIĘ NA MAPIE!', '#facc15', 19);
+        }
+
+        /* Naprawa starych zapisów / powrotu z ZSRR: postęp misji budowy musi zgadzać się z polami */
+        function normalizeConstructionSites() {
+            const bIdx = missions.findIndex(m => m.targetType === 'build');
+            if (bIdx < 0) return;
+            const bm = missions[bIdx];
+            if (currentMissionIndex < bIdx) {
+                constructionSites.forEach(s => { s.built = false; });
+                bm.current = 0;
+            } else if (currentMissionIndex === bIdx) {
+                bm.goal = Math.min(bm.goal, constructionSites.length);
+                const builtCount = constructionSites.filter((s, i) => i < bm.goal && s.built).length;
+                bm.current = Math.min(bm.goal, builtCount);
+            }
+        }
+
         function checkConstructionSites(radius) {
-            constructionSites.forEach(site => {
+            constructionSites.forEach((site, siteIdx) => {
+                if (!isConstructionSiteActive(siteIdx)) return;
                 if (!site.built && Math.hypot(site.x - player.x, site.y - player.y) < site.r + radius) {
                     site.built = true;
                     player.score += 300;
@@ -3923,12 +4098,15 @@
                     if (currentMissionIndex < missions.length) {
                         if (missions[currentMissionIndex].targetType === 'boss') {
                             spawnBoss();
+                        } else if (missions[currentMissionIndex].targetType === 'build') {
+                            startBuildMission();
                         }
                     } else {
                         currentMissionIndex = 0;
                         missions.forEach(item => {
                             item.current = 0;
                             if (item.targetType !== 'boss') item.goal += 2;
+                            if (item.targetType === 'build') item.goal = Math.min(item.goal, constructionSites.length);
                         });
                         constructionSites.forEach(s => s.built = false);
                         addFloatingText(player.x, player.y - 75, '🎉 NOWA PIĘCIOLATKA ROZPOCZĘTA!', '#ffd166', 22);
@@ -5106,7 +5284,8 @@
             ctx.fillText(remTxt, SAFE_ZONE.x, SAFE_ZONE.y + 8);
             ctx.restore();
 
-            constructionSites.forEach(site => {
+            constructionSites.forEach((site, siteIdx) => {
+                if (!isConstructionSiteActive(siteIdx)) return;
                 ctx.save();
                 ctx.beginPath();
                 ctx.arc(site.x, site.y, site.r, 0, Math.PI * 2);
@@ -5351,7 +5530,7 @@
                 ctx.font = 'bold 11px Montserrat';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
-                ctx.fillText(b.name, b.x + b.w / 2, b.y + b.h / 2);
+                ctx.fillText(b.name, b.x + b.w / 2, b.y + b.h / 2, Math.max(40, b.w - 36));
             });
 
             if (meatQueueCitizens.length > 0) {
@@ -5487,8 +5666,8 @@
             }
 
             miniCtx.fillStyle = '#fbbf24';
-            constructionSites.forEach(s => {
-                if (!s.built) {
+            constructionSites.forEach((s, sIdx) => {
+                if (!s.built && isConstructionSiteActive(sIdx)) {
                     miniCtx.beginPath();
                     miniCtx.arc(s.x * scale, s.y * scale, 3.5, 0, Math.PI * 2);
                     miniCtx.fill();
