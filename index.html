@@ -4,6 +4,74 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>GIERKA — Budujemy Drugą Polskę</title>
+    <script>
+    /* ===== SKALA INTERFEJSU: AUTO (do ekranu) + 3 POZIOMY PRZYCISKÓW STEROWANIA =====
+       --ui-scale  : HUD (minimapa, teleks, statystyki) — 50–150%, auto lub ręcznie
+       --ctl-scale : joystick + pasek broni — tylko 3 poziomy, nigdy > 100%:
+                       skala UI >= 83%  -> 100%  (duży)
+                       skala UI 67–82%  ->  93%  (trochę mniejszy)
+                       skala UI <  67%  ->  86%  (jeszcze trochę mniejszy)
+       Progi 83% i 67% = 100% - 1/6 * 100% oraz 100% - 2/6 * 100%, czyli zakres 50–100%
+       podzielony na 3 równe pasma po ~16,7 pkt. Przy kroku suwaka 5%: 85–150% = duży,
+       70–80% = średni, 50–65% = najmniejszy. */
+    (function () {
+        var KEY = 'gierka_ui_scale', KEY_AUTO = 'gierka_ui_scale_auto';
+        var MIN = 50, MAX = 150, DEF = 100, STEP = 5;
+        var CTL_FULL_FROM = 100 - 100 / 6;   // ~83,3%
+        var CTL_MID_FROM  = 100 - 200 / 6;   // ~66,7%
+        var CTL_LEVELS = [1, 0.93, 0.86];    // duży, mniejszy, jeszcze trochę mniejszy
+        var root = document.documentElement;
+
+        function clamp(v) {
+            v = Math.round(Number(v));
+            if (!isFinite(v)) return DEF;
+            return Math.max(MIN, Math.min(MAX, v));
+        }
+        function ctlFor(pct) {
+            if (pct >= CTL_FULL_FROM) return CTL_LEVELS[0];
+            if (pct >= CTL_MID_FROM) return CTL_LEVELS[1];
+            return CTL_LEVELS[2];
+        }
+        // Wykrycie rozmiaru ekranu: telefon/tablet (dotyk) liczony od krótszego boku,
+        // komputer od okna przeglądarki względem 1366x768 (=100%).
+        function autoPct() {
+            var w = window.innerWidth, h = window.innerHeight, s;
+            var touch = false;
+            try { touch = window.matchMedia('(pointer: coarse)').matches; } catch (e) {}
+            if (touch) {
+                s = Math.min(w, h) / 390;
+                s = Math.max(0.7, Math.min(1.25, s));
+            } else {
+                s = Math.min(w / 1366, h / 768);
+                s = Math.max(0.6, Math.min(1.5, s));
+            }
+            return clamp(Math.round(s * 100 / STEP) * STEP);
+        }
+        function isAuto() {
+            try { return localStorage.getItem(KEY_AUTO) !== '0'; } catch (e) { return true; }
+        }
+        function getManual() {
+            try {
+                var raw = localStorage.getItem(KEY);
+                if (raw !== null) return clamp(raw);
+            } catch (e) {}
+            return DEF;
+        }
+        function currentPct() { return isAuto() ? autoPct() : getManual(); }
+        function applyVars(pct) {
+            pct = clamp(pct);
+            root.style.setProperty('--ui-scale', String(pct / 100));
+            root.style.setProperty('--ctl-scale', String(ctlFor(pct)));
+            return pct;
+        }
+        window.GierkaUI = {
+            MIN: MIN, MAX: MAX, DEF: DEF, KEY: KEY, KEY_AUTO: KEY_AUTO,
+            clamp: clamp, ctlFor: ctlFor, autoPct: autoPct, isAuto: isAuto,
+            getManual: getManual, currentPct: currentPct, applyVars: applyVars
+        };
+        applyVars(currentPct());
+    })();
+    </script>
     <meta name="theme-color" content="#12061c">
     <link rel="manifest" href="/manifest.webmanifest">
     <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png">
@@ -284,6 +352,10 @@
             font-weight: 900;
         }
 
+        /* Złoty klawisz VOLUME (ON/OFF dźwięku) — jak C=, przygaszony gdy dźwięk wyłączony */
+        .c64-key-volume { letter-spacing: 0; }
+        .c64-key-volume.is-off { color: #8c7a55; }
+
         .c64-bottom-deck {
             width: 100%;
             max-width: 560px;
@@ -526,6 +598,66 @@
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.65);
         }
 
+        /* ===== SKALA INTERFEJSU (suwak w menu głównym i w pauzie) ===== */
+        :root { --ui-scale: 1; --ctl-scale: 1; }
+        #hud-left-col  { scale: var(--ui-scale); transform-origin: 0 0; }
+        #hud-right-col { scale: var(--ui-scale); transform-origin: 100% 0; }
+        /* Przyciski sterowania (pasek broni, joystick) używają osobnej skali --ctl-scale:
+           tylko 3 poziomy (100% / 93% / 86%), nigdy powyżej 100%. */
+        #action-bar    { scale: var(--ctl-scale); transform-origin: 50% 100%; }
+        @media (max-width: 820px) {
+            #action-bar { transform-origin: 100% 100%; }
+        }
+        .ui-scale-control {
+            width: 100%; max-width: 320px; margin: 0 auto; padding: 8px 12px 10px;
+            border-radius: 10px; text-align: left;
+            background: rgba(15,10,24,0.7); border: 1px solid rgba(255,209,102,0.4);
+        }
+        .ui-scale-head {
+            display: flex; align-items: center; justify-content: space-between; gap: 8px;
+            margin-bottom: 6px; font-size: 11px; font-weight: 800; letter-spacing: 0.04em; color: #fde68a;
+        }
+        .ui-scale-right { display: inline-flex; align-items: center; gap: 6px; }
+        .ui-scale-value, .vol-value { min-width: 40px; text-align: right; color: #ffd166; font-weight: 900; }
+        .ui-scale-reset, .vol-toggle {
+            padding: 1px 7px; border-radius: 6px; cursor: pointer; line-height: 1.4;
+            font-size: 12px; font-weight: 900; color: #fff;
+            background: rgba(255,255,255,0.1); border: 1px solid rgba(255,209,102,0.45);
+        }
+        .ui-scale-reset:hover, .vol-toggle:hover { background: rgba(255,255,255,0.2); }
+        .ui-scale-reset.is-auto, .vol-toggle.is-on {
+            color: #052e16; background: #4ade80; border-color: #bbf7d0;
+        }
+        .vol-toggle { min-width: 40px; }
+        .ui-scale-hint, .player-name-hint {
+            margin-top: 4px; font-size: 10px; font-weight: 700; line-height: 1.3;
+            color: rgba(253, 230, 138, 0.75); text-align: left;
+        }
+        .ui-scale-slider, .vol-slider { display: block; width: 100%; height: 24px; margin: 0; cursor: pointer; accent-color: #ff2a85; }
+        #pause-screen, #settings-modal { transition: background 0.15s ease; }
+        #pause-screen .overlay-card, #settings-modal .overlay-card { transition: opacity 0.15s ease; }
+        #pause-screen.ui-previewing, #settings-modal.ui-previewing { background: rgba(8, 2, 14, 0.06); }
+        #pause-screen.ui-previewing .overlay-card, #settings-modal.ui-previewing .overlay-card { opacity: 0.55; }
+
+        /* Pole nazwy gracza (globalne user-select:none blokuje pisanie w Safari, więc je przywracamy) */
+        .player-name-input {
+            display: block; width: 100%; padding: 8px 10px; border-radius: 8px;
+            font-family: 'Montserrat', sans-serif; font-size: 16px; font-weight: 800; color: #fff;
+            background: rgba(255,255,255,0.08); border: 1px solid rgba(255,209,102,0.5); outline: none;
+            user-select: text; -webkit-user-select: text;
+        }
+        .player-name-input:focus { border-color: #ff2a85; box-shadow: 0 0 0 2px rgba(255,42,133,0.35); }
+
+        /* Okno ustawień */
+        .settings-card { max-width: 380px; max-height: calc(100vh - 32px); overflow-y: auto; border-color: #ffd166; padding: 18px 16px; }
+        .settings-check {
+            display: flex; align-items: center; gap: 12px; margin-top: 6px; padding: 8px 6px;
+            border-radius: 8px; cursor: pointer; text-align: left;
+            font-size: 14px; font-weight: 800; color: #fff; background: rgba(255,255,255,0.05);
+        }
+        .settings-check input { width: 22px; height: 22px; flex-shrink: 0; margin: 0; cursor: pointer; accent-color: #ff2a85; }
+        #audio-settings.is-muted .vol-slider, #audio-settings.is-muted .settings-check { opacity: 0.55; }
+
         @media (max-width: 820px) {
             .hud-panel {
                 background: rgba(12, 8, 20, 0.62);
@@ -757,10 +889,10 @@
 
         @media (max-width: 820px) {
             #mobile-controls {
-                width: min(176px, 44vw) !important;
-                height: min(176px, 44vw) !important;
+                width: calc(min(176px, 44vw) * var(--ctl-scale, 1)) !important;
+                height: calc(min(176px, 44vw) * var(--ctl-scale, 1)) !important;
                 bottom: 24px !important;
-                left: 23% !important;
+                left: calc(23% + (min(176px, 44vw) * (var(--ctl-scale, 1) - 1)) / 2) !important;
                 background: rgba(255, 255, 255, 0.05) !important;
                 border: 2px solid rgba(255, 42, 133, 0.35) !important;
                 box-shadow: none !important;
@@ -896,7 +1028,7 @@
                     <button type="button" class="c64-key" data-c64-key="SYS">SYS 64738</button>
                     <button type="button" class="c64-key" data-c64-key="CRSR_UP">↑</button>
                     <button type="button" class="c64-key" data-c64-key="CRSR_DN">↓</button>
-                    <button type="button" class="c64-key" data-c64-key="CRSR_LR">←/→</button>
+                    <button type="button" class="c64-key c64-key-commodore c64-key-volume" data-c64-key="VOLUME" aria-label="Głośność: włącz lub wyłącz dźwięk (VOLUME ON/OFF)">VOLUME</button>
                 </div>
 
                 <button type="button" id="c64-big-enter-btn" class="c64-enter-btn">
@@ -928,7 +1060,7 @@
         <div class="fixed top-2 left-2 right-2 z-30 flex items-start justify-between gap-1.5 pointer-events-none">
             
             <!-- LEWA STRONA: Statystyki + Teleks KC PZPR -->
-            <div class="flex flex-col gap-1.5 max-w-[225px] min-[821px]:max-w-xs">
+            <div id="hud-left-col" class="flex flex-col gap-1.5 max-w-[225px] min-[821px]:max-w-xs">
                 <div id="support-panel" class="hud-panel rounded-xl p-2 min-[821px]:p-3 pointer-events-auto transition-all">
                     <div id="support-header-row" class="flex items-center justify-between gap-2 mb-1">
                         <span id="hud-leader-title" class="text-[10px] min-[821px]:text-[11px] font-black uppercase tracking-wider text-[#ffd166] truncate">I SEKR. E. GIEREK</span>
@@ -989,7 +1121,7 @@
             </div>
 
             <!-- PRAWA STRONA GÓRY: Radar + 6 Przycisków -->
-            <div class="flex flex-col items-end gap-1 pointer-events-auto">
+            <div id="hud-right-col" class="flex flex-col items-end gap-1 pointer-events-auto">
                 <div id="top-right-widget-box" class="flex flex-col items-stretch gap-1">
                     <div class="top-btn-row grid grid-cols-3 gap-1">
                         <button onclick="manualSaveGame()" id="save-btn" title="Zapisz grę ręcznie" class="top-btn hud-panel px-2 py-1 rounded-lg text-[10px] min-[821px]:text-xs font-bold text-emerald-300 border-emerald-400/50 hover:bg-white/10 transition cursor-pointer">
@@ -998,8 +1130,8 @@
                         <button onclick="togglePause()" id="pause-btn" title="Pauza (P / Esc)" class="top-btn hud-panel px-2 py-1 rounded-lg text-[10px] min-[821px]:text-xs font-bold hover:bg-white/10 transition cursor-pointer">
                             ⏸
                         </button>
-                        <button onclick="toggleAudio()" id="game-audio-btn" title="Dźwięk" class="top-btn hud-panel px-2 py-1 rounded-lg text-[10px] min-[821px]:text-xs font-bold hover:bg-white/10 transition cursor-pointer">
-                            🔊
+                        <button onclick="openSettings('game')" id="game-settings-btn" title="Ustawienia (pauzuje grę)" class="top-btn hud-panel px-2 py-1 rounded-lg text-[10px] min-[821px]:text-xs font-bold hover:bg-white/10 transition cursor-pointer">
+                            ⚙️
                         </button>
                         <button onclick="toggleInvestmentsModal()" title="Inwestycje Drugiej Polski" class="top-btn hud-panel px-2 py-1 rounded-lg text-[10px] min-[821px]:text-xs font-bold text-emerald-300 border-emerald-400/50 hover:bg-white/10 transition cursor-pointer">
                             🏗️<span class="hidden min-[821px]:inline"> BUDUJ</span>
@@ -1107,6 +1239,44 @@
                 </div>
                 <div id="investments-list" class="space-y-2 overflow-y-auto pr-1 flex-1 text-xs"></div>
             </div>
+        </div>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- USTAWIENIA: rozmiar interfejsu + dźwięk (z gry działa jak pauza)      -->
+    <!-- ===================================================================== -->
+    <div id="settings-modal" class="overlay" style="z-index: 77;" role="dialog" aria-label="Ustawienia">
+        <div class="overlay-card settings-card">
+            <h2 class="vice-title" style="font-size:34px; line-height:1; margin:0 0 12px; padding-right:0.08em;">USTAWIENIA</h2>
+
+            <div class="ui-scale-control" style="margin-bottom:10px;">
+                <div class="ui-scale-head">
+                    <span>👤 NAZWA GRACZA</span>
+                </div>
+                <input type="text" id="player-name-input" class="player-name-input" maxlength="16" value="Gierek" placeholder="Gierek" autocomplete="off" autocapitalize="words" spellcheck="false" aria-label="Nazwa gracza">
+                <div class="player-name-hint">Dopisywana do każdego zapisu gry. Domyślnie: Gierek.</div>
+            </div>
+
+            <div class="ui-scale-control">
+                <div class="ui-scale-head">
+                    <span>🖥️ ROZMIAR INTERFEJSU</span>
+                    <span class="ui-scale-right"><b class="ui-scale-value">100%</b><button type="button" class="ui-scale-reset" title="Dopasuj rozmiar automatycznie do ekranu" aria-label="Automatyczny rozmiar interfejsu dopasowany do ekranu">AUTO</button></span>
+                </div>
+                <input type="range" class="ui-scale-slider" min="50" max="150" step="5" value="100" aria-label="Rozmiar interfejsu (minimapa, bronie, teleks)">
+                <div class="ui-scale-hint"></div>
+            </div>
+
+            <div class="ui-scale-control" id="audio-settings" style="margin-top:10px;">
+                <div class="ui-scale-head">
+                    <span>🔊 GŁOŚNOŚĆ</span>
+                    <span class="ui-scale-right"><b class="vol-value">100%</b><button type="button" id="vol-toggle" class="vol-toggle is-on" aria-pressed="true" title="Włącz / wyłącz dźwięk (VOLUME ON/OFF)">ON</button></span>
+                </div>
+                <input type="range" id="vol-slider" class="vol-slider" min="0" max="100" step="5" value="100" aria-label="Głośność">
+                <label class="settings-check"><input type="checkbox" id="opt-music" checked><span>🎵 Muzyka</span></label>
+                <label class="settings-check"><input type="checkbox" id="opt-sfx" checked><span>💥 Efekty dźwiękowe</span></label>
+            </div>
+
+            <button id="settings-close-btn" class="menu-btn btn-pomożecie" style="border-color:#ffd166;" onclick="closeSettings()">✔ GOTOWE</button>
         </div>
     </div>
 
@@ -1240,7 +1410,7 @@
             </div>
 
             <div class="flex flex-wrap items-center justify-center gap-2 mt-1">
-                <button id="intro-audio-btn" onclick="toggleAudio()" class="intro-audio">🔊 DŹWIĘK: WŁ.</button>
+                <button id="intro-settings-btn" onclick="openSettings('menu')" class="intro-audio" style="border-color:#ffd166; color:#ffe9a8; background:rgba(255,209,102,0.14);">⚙️ USTAWIENIA</button>
                 <button id="intro-help-btn" onclick="openHelpModal(false)" class="intro-audio" style="border-color:#38bdf8; color:#bae6fd; background:rgba(14,116,144,0.45);">ℹ️ ZASADY | JAK GRAĆ?</button>
             </div>
         </div>
@@ -1366,18 +1536,89 @@
     </div>
 
     <script>
+        // Wzmocnienie syntezowanej muzyki (menu, pauza, PRL, ZSRR) względem efektów.
+        // 1 = poziom pierwotny (był za cichy); 3 = ok. +9,5 dB. Plik gta6.mp3 nie jest tym zmieniany.
+        const MUSIC_BOOST = 3;
+
         class RetroAudioEngine {
             constructor() {
                 this.ctx = null;
-                this.enabled = true;
+                this.enabled = true;     // VOLUME ON/OFF (główny wyłącznik dźwięku)
+                this.musicOn = true;     // ptaszek „Muzyka”
+                this.sfxOn = true;       // ptaszek „Efekty dźwiękowe”
+                this.volume = 1;         // głośność 0..1 (suwak 0–100%)
+                this.master = null;
+                this.musicBus = null;
+                this.sfxBus = null;
                 this.bgmInterval = null;
                 this.step = 0;
+                this.loadSettings();
+            }
+
+            // ---- Zapis / odczyt ustawień dźwięku (przeglądarka pamięta wybór między sesjami) ----
+            loadSettings() {
+                try {
+                    const raw = localStorage.getItem('gierka_audio');
+                    if (!raw) return;
+                    const o = JSON.parse(raw);
+                    if (typeof o.enabled === 'boolean') this.enabled = o.enabled;
+                    if (typeof o.music === 'boolean') this.musicOn = o.music;
+                    if (typeof o.sfx === 'boolean') this.sfxOn = o.sfx;
+                    const v = Number(o.volume);
+                    if (isFinite(v)) this.volume = Math.max(0, Math.min(100, Math.round(v))) / 100;
+                } catch (e) {}
+            }
+
+            saveSettings() {
+                try {
+                    localStorage.setItem('gierka_audio', JSON.stringify({
+                        enabled: this.enabled,
+                        volume: Math.round(this.volume * 100),
+                        music: this.musicOn,
+                        sfx: this.sfxOn
+                    }));
+                } catch (e) {}
+            }
+
+            // Krzywa głośności: kwadrat suwaka brzmi naturalniej niż liniowa zmiana amplitudy
+            volumeCurve() {
+                return this.volume * this.volume;
+            }
+
+            applyLevels() {
+                if (!this.ctx || !this.master) return;
+                const t = this.ctx.currentTime;
+                this.master.gain.setTargetAtTime(this.enabled ? this.volumeCurve() : 0, t, 0.02);
+                this.musicBus.gain.setTargetAtTime(this.musicOn ? MUSIC_BOOST : 0, t, 0.02);
+                this.sfxBus.gain.setTargetAtTime(this.sfxOn ? 1 : 0, t, 0.02);
             }
 
             init() {
                 if (!this.ctx) {
                     const AudioCtx = window.AudioContext || window.webkitAudioContext;
                     this.ctx = new AudioCtx();
+                    // Magistrale: muzyka i efekty -> głośność główna -> wyjście
+                    this.master = this.ctx.createGain();
+                    this.musicBus = this.ctx.createGain();
+                    this.sfxBus = this.ctx.createGain();
+                    this.musicBus.connect(this.master);
+                    this.sfxBus.connect(this.master);
+                    let outNode = this.master;
+                    try {
+                        // Łagodny limiter: głośniejsza muzyka + kilka efektów naraz nie przesteruje dźwięku
+                        const comp = this.ctx.createDynamicsCompressor();
+                        comp.threshold.value = -10;
+                        comp.knee.value = 12;
+                        comp.ratio.value = 6;
+                        comp.attack.value = 0.003;
+                        comp.release.value = 0.25;
+                        this.master.connect(comp);
+                        outNode = comp;
+                    } catch (e) { outNode = this.master; }
+                    outNode.connect(this.ctx.destination);
+                    this.master.gain.value = this.enabled ? this.volumeCurve() : 0;
+                    this.musicBus.gain.value = this.musicOn ? MUSIC_BOOST : 0;
+                    this.sfxBus.gain.value = this.sfxOn ? 1 : 0;
                 }
                 if (this.ctx.state === 'suspended') {
                     this.ctx.resume().catch(() => {});
@@ -1385,7 +1626,7 @@
             }
 
             playKeyClick(pitch = 620) {
-                if (!this.enabled) return;
+                if (!this.enabled || !this.sfxOn) return;
                 this.init();
                 const now = this.ctx.currentTime;
                 const osc = this.ctx.createOscillator();
@@ -1396,7 +1637,7 @@
                 gain.gain.setValueAtTime(0.08, now);
                 gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
                 osc.connect(gain);
-                gain.connect(this.ctx.destination);
+                gain.connect(this.sfxBus);
                 osc.start(now);
                 osc.stop(now + 0.045);
             }
@@ -1472,7 +1713,7 @@
                 };
 
                 const tick = () => {
-                    if (!this.enabled || !this.ctx || isGta6Playing) return;
+                    if (!this.enabled || !this.musicOn || !this.ctx || isGta6Playing) return;
                     if (this.ctx.state === 'suspended') {
                         this.ctx.resume().catch(() => {});
                         return;
@@ -1496,7 +1737,7 @@
                         gain.gain.setValueAtTime(cfg.bassGain, now);
                         gain.gain.exponentialRampToValueAtTime(0.001, now + 0.21);
                         osc.connect(gain);
-                        gain.connect(this.ctx.destination);
+                        gain.connect(this.musicBus);
                         osc.start(now);
                         osc.stop(now + 0.22);
                     }
@@ -1513,7 +1754,7 @@
                         lGain.gain.setValueAtTime(cfg.leadGain, now);
                         lGain.gain.exponentialRampToValueAtTime(0.001, now + 0.17);
                         lead.connect(lGain);
-                        lGain.connect(this.ctx.destination);
+                        lGain.connect(this.musicBus);
                         lead.start(now);
                         lead.stop(now + 0.18);
                     }
@@ -1525,13 +1766,13 @@
             }
 
             playSfx(type) {
-                if (!this.enabled) return;
+                if (!this.enabled || !this.sfxOn) return;
                 this.init();
                 const now = this.ctx.currentTime;
                 const osc = this.ctx.createOscillator();
                 const gain = this.ctx.createGain();
                 osc.connect(gain);
-                gain.connect(this.ctx.destination);
+                gain.connect(this.sfxBus);
 
                 if (type === 'trowel') {
                     osc.type = 'square';
@@ -1615,6 +1856,7 @@
             el.loop = false;
             el.currentTime = 0;
             isGta6Playing = true;
+            syncSplashAudio();
 
             el.onended = () => {
                 onGta6FinishedAndStartMenuMusic();
@@ -1642,24 +1884,139 @@
             }
         }
 
+        // gta6.mp3 traktujemy jak muzykę: wycisza go wyłączenie dźwięku, ptaszek „Muzyka” i głośność
+        function syncSplashAudio() {
+            const el = document.getElementById('splash-audio');
+            if (!el) return;
+            try {
+                el.volume = Math.max(0, Math.min(1, audio.volumeCurve()));
+                el.muted = !(audio.enabled && audio.musicOn);
+            } catch (e) {}
+        }
+
+        // Odświeża wszystkie kontrolki dźwięku (okno ustawień + klawisz VOLUME na ekranie C64)
+        function syncAudioUi() {
+            const pct = Math.round(audio.volume * 100);
+            const vs = document.getElementById('vol-slider');
+            if (vs && Number(vs.value) !== pct) vs.value = pct;
+            document.querySelectorAll('.vol-value').forEach(el => { el.textContent = pct + '%'; });
+            const vt = document.getElementById('vol-toggle');
+            if (vt) {
+                vt.textContent = audio.enabled ? 'ON' : 'OFF';
+                vt.classList.toggle('is-on', audio.enabled);
+                vt.setAttribute('aria-pressed', audio.enabled ? 'true' : 'false');
+            }
+            const om = document.getElementById('opt-music');
+            const os = document.getElementById('opt-sfx');
+            if (om) om.checked = audio.musicOn;
+            if (os) os.checked = audio.sfxOn;
+            const box = document.getElementById('audio-settings');
+            if (box) box.classList.toggle('is-muted', !audio.enabled);
+            document.querySelectorAll('[data-c64-key="VOLUME"]').forEach(btn => {
+                btn.classList.toggle('is-off', !audio.enabled);
+            });
+        }
+
+        // Stosuje i ZAPISUJE ustawienia dźwięku (głośność, muzyka, efekty, ON/OFF)
+        function applyAudioSettings() {
+            audio.applyLevels();
+            syncSplashAudio();
+            if (audio.enabled && audio.musicOn && c64BootCompleted && !isGta6Playing) {
+                try { audio.startMusic(); } catch (e) {}
+            }
+            syncAudioUi();
+            audio.saveSettings();
+        }
+
+        // VOLUME ON/OFF — wspólne dla klawisza na ekranie C64 i przełącznika w ustawieniach
         function toggleAudio() {
             audio.enabled = !audio.enabled;
-            const splashEl = document.getElementById('splash-audio');
-            if (audio.enabled) {
-                if (isGta6Playing && splashEl && !gta6Completed) {
-                    splashEl.play().catch(() => onGta6FinishedAndStartMenuMusic());
-                } else if (c64BootCompleted) {
+            applyAudioSettings();
+        }
+
+        // ===== OKNO USTAWIEŃ (rozmiar interfejsu + dźwięk); z gry działa jak pauza =====
+        let settingsPausedGame = false;
+
+        function openSettings(from) {
+            const modal = document.getElementById('settings-modal');
+            if (!modal || modal.classList.contains('show')) return;
+            settingsPausedGame = false;
+            if (from === 'game' && gameRunning && !paused && !eventPaused) {
+                paused = true;
+                settingsPausedGame = true;
+                resetInput();
+                // Muzyka pauzy gra dalej, więc zmiany głośności słychać na żywo
+                if (audio.enabled && audio.ctx && !isGta6Playing) {
+                    audio.ctx.resume().catch(() => {});
                     audio.startMusic();
                 }
-            } else {
-                if (splashEl) splashEl.pause();
             }
-            const label = audio.enabled ? '🔊 DŹWIĘK: WŁ.' : '🔇 DŹWIĘK: WYŁ.';
-            const introBtn = document.getElementById('intro-audio-btn');
-            const gameBtn = document.getElementById('game-audio-btn');
-            if (introBtn) introBtn.textContent = label;
-            if (gameBtn) gameBtn.textContent = audio.enabled ? '🔊' : '🔇';
+            const closeBtn = document.getElementById('settings-close-btn');
+            if (closeBtn) closeBtn.textContent = settingsPausedGame ? '▶ WRÓĆ DO GRY' : '✔ GOTOWE';
+            syncAudioUi();
+            syncPlayerNameUi();
+            modal.classList.add('show');
         }
+
+        function closeSettings() {
+            const modal = document.getElementById('settings-modal');
+            if (!modal) return;
+            modal.classList.remove('show');
+            modal.classList.remove('ui-previewing');
+            if (settingsPausedGame && gameRunning && paused) {
+                paused = false;
+                lastTime = performance.now();
+                if (audio.enabled && audio.ctx && !isGta6Playing) {
+                    audio.ctx.resume().catch(() => {});
+                    audio.startMusic();
+                }
+            }
+            settingsPausedGame = false;
+        }
+
+        (function initAudioSettingsControls() {
+            const vs = document.getElementById('vol-slider');
+            const vt = document.getElementById('vol-toggle');
+            const om = document.getElementById('opt-music');
+            const os = document.getElementById('opt-sfx');
+
+            if (vs) {
+                vs.addEventListener('input', () => {
+                    audio.volume = Math.max(0, Math.min(100, Number(vs.value) || 0)) / 100;
+                    if (audio.volume > 0) audio.enabled = true;   // ruszenie suwaka włącza dźwięk
+                    applyAudioSettings();
+                });
+                // Po puszczeniu suwaka krótki dźwięk próbny + zdjęcie fokusu (strzałki/WASD nie ruszają suwaka)
+                vs.addEventListener('change', () => {
+                    audio.playSfx('pickup');
+                    setTimeout(() => vs.blur(), 0);
+                });
+            }
+            if (vt) {
+                vt.addEventListener('click', () => {
+                    toggleAudio();
+                    audio.playSfx('pickup');
+                    vt.blur();
+                });
+            }
+            if (om) {
+                om.addEventListener('change', () => {
+                    audio.musicOn = om.checked;
+                    applyAudioSettings();
+                    om.blur();
+                });
+            }
+            if (os) {
+                os.addEventListener('change', () => {
+                    audio.sfxOn = os.checked;
+                    applyAudioSettings();
+                    audio.playSfx('pickup');
+                    os.blur();
+                });
+            }
+            syncSplashAudio();
+            syncAudioUi();
+        })();
 
         const introCaptions = [
             "„ABY POLSKA ROSŁA W SIŁĘ, A LUDZIOM ŻYŁO SIĘ DOSTATNIEJ!”",
@@ -2033,6 +2390,58 @@
         /* ===================================================================== */
         const SAVE_STORAGE_KEY = 'gierka_prl_saves_v1';
         const MAX_SAVES = 18;
+
+        /* Nazwa gracza (ustawienia): domyślnie „Gierek”, dopisywana do każdego zapisu */
+        const PLAYER_NAME_KEY = 'gierka_player_name';
+        const DEFAULT_PLAYER_NAME = 'Gierek';
+        const MAX_PLAYER_NAME_LEN = 16;
+
+        function sanitizePlayerName(v) {
+            return String(v == null ? '' : v)
+                .replace(/[\u0000-\u001f\u007f<>]/g, '')
+                .replace(/\s+/g, ' ')
+                .trim()
+                .slice(0, MAX_PLAYER_NAME_LEN)
+                .trim();
+        }
+
+        function loadPlayerName() {
+            try {
+                const raw = localStorage.getItem(PLAYER_NAME_KEY);
+                const n = sanitizePlayerName(raw);
+                if (n) return n;
+            } catch (e) {}
+            return DEFAULT_PLAYER_NAME;
+        }
+
+        let playerName = loadPlayerName();
+
+        function setPlayerName(v) {
+            playerName = sanitizePlayerName(v) || DEFAULT_PLAYER_NAME;
+            try { localStorage.setItem(PLAYER_NAME_KEY, playerName); } catch (e) {}
+        }
+
+        function syncPlayerNameUi() {
+            const inp = document.getElementById('player-name-input');
+            if (inp && inp.value !== playerName) inp.value = playerName;
+        }
+
+        function escapeHtml(str) {
+            return String(str).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+        }
+
+        (function initPlayerNameControl() {
+            const inp = document.getElementById('player-name-input');
+            if (!inp) return;
+            inp.value = playerName;
+            // Wpisywanie zapisuje nazwę od razu (puste pole = domyślna „Gierek”)
+            inp.addEventListener('input', () => setPlayerName(inp.value));
+            inp.addEventListener('change', () => { inp.value = playerName; });
+            inp.addEventListener('blur', () => { inp.value = playerName; });
+            inp.addEventListener('keydown', ev => {
+                if (ev.key === 'Enter') { ev.preventDefault(); inp.blur(); }
+            });
+        })();
         let saveToastTimeout = null;
 
         function showSaveToast(text = '💾 GRA ZAPISANA') {
@@ -2081,6 +2490,7 @@
                 id: `${now}_${Math.random().toString(36).slice(2, 7)}`,
                 number: nextNumber,
                 type: isAuto ? 'auto' : 'manual',
+                playerName: playerName,
                 reason: reason || (isAuto ? 'Autozapis' : 'Zapis ręczny'),
                 timestamp: now,
                 dateStr: formatSaveDateTime(now),
@@ -2144,8 +2554,8 @@
             updateMenuSaveControls();
 
             const toastMsg = isAuto
-                ? `💾 AUTOZAPIS #${nextNumber}${reason ? ' (' + reason + ')' : ''}`
-                : `💾 ZAPISANO GRĘ #${nextNumber}`;
+                ? `💾 AUTOZAPIS #${nextNumber} • ${playerName}${reason ? ' (' + reason + ')' : ''}`
+                : `💾 ZAPISANO GRĘ #${nextNumber} • ${playerName}`;
             showSaveToast(toastMsg);
         }
 
@@ -2163,7 +2573,7 @@
                 if (saves.length > 0) {
                     contBtn.disabled = false;
                     const latest = saves[0];
-                    contBtn.innerHTML = `▶ POMOŻECIE? — KONTYNUUJ <span class="block text-[11px] font-bold text-amber-200 mt-0.5">#${latest.number} • ${latest.dateStr}</span>`;
+                    contBtn.innerHTML = `▶ POMOŻECIE? — KONTYNUUJ <span class="block text-[11px] font-bold text-amber-200 mt-0.5">#${latest.number}${latest.playerName ? ' • ' + escapeHtml(latest.playerName) : ''} • ${latest.dateStr}</span>`;
                 } else {
                     contBtn.disabled = true;
                     contBtn.textContent = '▶ POMOŻECIE? — KONTYNUUJ (BRAK ZAPISU)';
@@ -2209,7 +2619,7 @@
                 row.innerHTML = `
                     <div class="min-w-0 flex-1">
                         <div class="flex items-center gap-1.5 flex-wrap">
-                            <span class="font-black text-amber-300">#${item.number}</span>
+                            <span class="font-black text-amber-300">#${item.number}${item.playerName ? ' ' + escapeHtml(item.playerName) : ''}</span>
                             <span class="px-1.5 py-0.5 rounded text-[10px] font-black uppercase ${isAuto ? 'bg-emerald-900/80 text-emerald-300 border border-emerald-500/40' : 'bg-pink-900/80 text-pink-200 border border-pink-500/40'}">
                                 ${isAuto ? 'AUTOZAPIS' : 'RĘCZNY'}
                             </span>
@@ -3574,6 +3984,15 @@
                 return;
             }
 
+            const settingsM = document.getElementById('settings-modal');
+            if (settingsM && settingsM.classList.contains('show')) {
+                if (e.key === 'Escape') {
+                    e.preventDefault();
+                    closeSettings();
+                }
+                return;
+            }
+
             if (!gameRunning) {
                 const introEl = document.getElementById('intro-screen');
                 if (introEl && !introEl.classList.contains('is-hidden') && e.key === 'Enter') startGame();
@@ -4531,8 +4950,6 @@
 
             if (audio.ctx && audio.ctx.state === 'suspended') audio.ctx.resume();
             if (audio.enabled && !isGta6Playing) audio.startMusic();
-            const introBtn = document.getElementById('intro-audio-btn');
-            if (introBtn) introBtn.textContent = audio.enabled ? '🔊 DŹWIĘK: WŁ.' : '🔇 DŹWIĘK: WYŁ.';
 
             updateMenuSaveControls();
             document.getElementById('intro-screen').classList.remove('is-hidden');
@@ -5206,36 +5623,114 @@
                 'SHIFT': 'SHIFT LOCK — PRESS ENTER',
                 'SYS': 'SYS 64738 — READY. PRESS ENTER',
                 'CRSR_UP': 'CRSR UP — PRESS ENTER',
-                'CRSR_DN': 'CRSR DOWN — PRESS ENTER',
-                'CRSR_LR': 'CRSR L/R — PRESS ENTER'
+                'CRSR_DN': 'CRSR DOWN — PRESS ENTER'
             };
+
+            function showC64Status(text) {
+                if (!terminalLines) return;
+                let statusLine = document.getElementById('c64-aux-status');
+                if (!statusLine) {
+                    statusLine = document.createElement('div');
+                    statusLine.id = 'c64-aux-status';
+                    statusLine.style.color = '#86efac';
+                    statusLine.style.fontSize = '8px';
+                    terminalLines.insertBefore(statusLine, document.getElementById('c64-run-line'));
+                }
+                statusLine.textContent = text;
+            }
 
             document.querySelectorAll('[data-c64-key]').forEach(btn => {
                 btn.addEventListener('click', () => {
                     const keyCode = btn.getAttribute('data-c64-key');
-                    audio.playKeyClick(460 + Math.random() * 240);
-                    if (terminalLines && c64KeyResponses[keyCode]) {
-                        let statusLine = document.getElementById('c64-aux-status');
-                        if (!statusLine) {
-                            statusLine = document.createElement('div');
-                            statusLine.id = 'c64-aux-status';
-                            statusLine.style.color = '#86efac';
-                            statusLine.style.fontSize = '8px';
-                            terminalLines.insertBefore(statusLine, document.getElementById('c64-run-line'));
-                        }
-                        statusLine.textContent = c64KeyResponses[keyCode];
+                    if (keyCode === 'VOLUME') {
+                        // Złoty klawisz VOLUME: włącza / wyłącza dźwięk i zapisuje wybór
+                        toggleAudio();
+                        audio.playKeyClick(620);
+                        showC64Status('VOLUME ' + (audio.enabled ? 'ON' : 'OFF'));
+                        return;
                     }
+                    audio.playKeyClick(460 + Math.random() * 240);
+                    if (c64KeyResponses[keyCode]) showC64Status(c64KeyResponses[keyCode]);
                 });
             });
+
+            // Zapisany wcześniej stan „dźwięk wyłączony” widać od razu na ekranie
+            if (!audio.enabled) showC64Status('VOLUME OFF');
         }
 
         initC64BootScreen();
         updateMenuSaveControls();
     </script>
     <script>
+        (function () {
+            var UI = window.GierkaUI;
+            var KEY = UI.KEY, KEY_AUTO = UI.KEY_AUTO;
+            var sliders = Array.prototype.slice.call(document.querySelectorAll('.ui-scale-slider'));
+
+            function setAuto(on) {
+                try { localStorage.setItem(KEY_AUTO, on ? '1' : '0'); } catch (e) {}
+            }
+            function refreshUi(pct) {
+                sliders.forEach(function (sl) { if (Number(sl.value) !== pct) sl.value = pct; });
+                Array.prototype.forEach.call(document.querySelectorAll('.ui-scale-value'), function (el) { el.textContent = pct + '%'; });
+                var auto = UI.isAuto();
+                Array.prototype.forEach.call(document.querySelectorAll('.ui-scale-reset'), function (btn) {
+                    btn.classList.toggle('is-auto', auto);
+                    btn.setAttribute('aria-pressed', auto ? 'true' : 'false');
+                });
+                var ctl = Math.round(UI.ctlFor(pct) * 100);
+                var txt = (auto ? 'Auto: dopasowano do ekranu. ' : 'Ręcznie. ') + 'Przyciski sterowania: ' + ctl + '% (maks. 100%).';
+                Array.prototype.forEach.call(document.querySelectorAll('.ui-scale-hint'), function (el) { el.textContent = txt; });
+            }
+            function apply() {
+                var pct = UI.applyVars(UI.currentPct());
+                refreshUi(pct);
+            }
+
+            sliders.forEach(function (sl) {
+                sl.addEventListener('input', function () {
+                    // Ruch suwaka = tryb ręczny
+                    var pct = UI.clamp(sl.value);
+                    setAuto(false);
+                    try { localStorage.setItem(KEY, String(pct)); } catch (e) {}
+                    apply();
+                });
+                // W pauzie na czas przeciągania suwaka odsłaniamy HUD, żeby było widać zmianę na żywo
+                var ov = sl.closest ? sl.closest('.overlay') : null;
+                function startPreview() { if (ov) ov.classList.add('ui-previewing'); }
+                function endPreview() {
+                    if (ov) ov.classList.remove('ui-previewing');
+                    setTimeout(function () { sl.blur(); }, 0); // strzałki/WASD nie mogą dalej ruszać suwakiem w trakcie gry
+                }
+                sl.addEventListener('pointerdown', startPreview);
+                sl.addEventListener('pointerup', endPreview);
+                sl.addEventListener('pointercancel', endPreview);
+                sl.addEventListener('touchend', endPreview);
+            });
+            // Przycisk AUTO: wraca do automatycznego dopasowania do ekranu
+            Array.prototype.forEach.call(document.querySelectorAll('.ui-scale-reset'), function (btn) {
+                btn.addEventListener('click', function () { setAuto(true); apply(); btn.blur(); });
+            });
+
+            // Zmiana rozmiaru okna / obrót telefonu — w trybie AUTO przelicz skalę na nowo
+            var resizeTimer = null;
+            function onScreenChange() {
+                if (!UI.isAuto()) return;
+                clearTimeout(resizeTimer);
+                resizeTimer = setTimeout(apply, 120);
+            }
+            window.addEventListener('resize', onScreenChange);
+            window.addEventListener('orientationchange', onScreenChange);
+
+            apply();
+        })();
+    </script>
+    <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js').catch(() => {});
+                navigator.serviceWorker.register('/sw.js', { scope: '/' })
+                    .then((reg) => { try { reg.update(); } catch (e) {} })
+                    .catch((err) => console.warn('SW rejestracja nieudana:', err));
             });
         }
     </script>
